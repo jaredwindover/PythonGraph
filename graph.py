@@ -15,6 +15,7 @@ nodeRad = 25
 selectedNode = None
 hoverNode = None
 heldNode = None
+maxNode = 0
 
 def gPS2floatT(x):
     return tuple([float(y) for y in x.split(',')])
@@ -26,6 +27,7 @@ def T2gPS(x):
     return reduce(lambda x,y: unicode(x) + ',' + unicode(y), x)
     
 def unselect():
+    global selectedNode
     try:
         selectedNode.attr['selected'] = 'False'
     except:
@@ -33,6 +35,7 @@ def unselect():
     selectedNode = None
 
 def unhold():
+    global heldNode
     try:
         heldNode.attr['held'] = 'False'
     except:
@@ -40,6 +43,7 @@ def unhold():
     heldNode = None
 
 def unhover():
+    global hoverNode
     try:
         hoverNode.attr['hover'] = 'False'
     except:
@@ -47,18 +51,23 @@ def unhover():
     hoverNode = None
     
 def select(node):
-    unselect()
+    global selectedNode
     unhover()
-    selectedNode = node
-    selectedNode.attr['selected'] = 'True'
+    same = (node == selectedNode)
+    unselect()
+    if not same:
+        selectedNode = node
+        selectedNode.attr['selected'] = 'True'
 
 def hold(node):
+    global heldNode
     unhold()
     unhover()
     node.attr['held'] = 'True'
     heldNode = node
 
 def hover(node):
+    global hoverNode
     unhover()
     hoverNode = node
     hoverNode.attr['hover'] = 'True'
@@ -83,6 +92,10 @@ class Window(QWidget):
         self.setGeometry(*geometry)
         self.setMouseTracking(True)
         self.setWindowTitle(windowTitle)
+        pal = QPalette()
+        pal.setColor(QPalette.Window, QColor('pink'))
+        self.setPalette(pal)
+        self.autoFillBackground = True
         self.show()
 
     def mousePressEvent(self, event):
@@ -95,6 +108,7 @@ class Window(QWidget):
         self.cursor.update(event)
         if self.leftClickOnRelease:
             self.onLeftClick()
+        self.onLeftRelease()
         self.repaint()
 
     def mouseMoveEvent(self, event):
@@ -113,6 +127,7 @@ class Window(QWidget):
             select(node)
         else:
             unselect()
+            
         
     def onLeftDrag(self):
         pos = (self.cursor.x,self.cursor.y)
@@ -134,10 +149,14 @@ class Window(QWidget):
         (node,dist) = self.getClosestNode(pos)
         if dist < nodeRad**2:
             hold(node)
+
+    def onLeftRelease(self):
+        unhold()
         
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
+        qp.setRenderHint(QPainter.Antialiasing)
         self.drawGraph( qp )
         qp.end()
 
@@ -149,6 +168,7 @@ class Window(QWidget):
             self.drawNode(qp,n)
 
     def drawEdge( self, qp, e):
+        qp.setPen(QColor('black'))
         pString = e[0].attr['pos']
         pos1 = QPoint(*gPS2intT(pString))
         pString = e[1].attr['pos']
@@ -158,14 +178,20 @@ class Window(QWidget):
     def drawNode( self, qp, n):
         pString = n.attr['pos']
         p = QPoint(*gPS2intT(pString))
+        rg = QRadialGradient(p,nodeRad,p)
+        rg.setCenter(p)
         if (n.attr['hover'] == 'True'):
-            qp.setPen(QColor(n.attr['hoverColor']))
+            qc = QColor(n.attr['hoverColor'])
         elif (n.attr['held'] == 'True'):
-            qp.setPen(QColor(n.attr['heldColor']))
+            qc = QColor(n.attr['heldColor'])
         elif (n.attr['selected'] == 'True'):
-            qp.setPen(QColor(n.attr['selectedColor']))
+            qc = QColor(n.attr['selectedColor'])
         else:
-            qp.setPen(QColor(n.attr['color']))
+            qc = QColor(n.attr['color'])
+        rg.setColorAt(0,qc)
+        rg.setColorAt(1,QColor(0,0,0,0))
+        qp.setBrush(rg)
+        qp.setPen(QColor(0,0,0,0))#qc)
         qp.drawEllipse(p,nodeRad,nodeRad)
         
             
@@ -178,6 +204,12 @@ class Window(QWidget):
         r = reduce(min2,distances)
         return r
 
+    def addNode(self,pos):
+        global G
+        maxNode = maxNode + 1
+        G.add_node(maxNode)
+        G.get_node(maxNode).attr['color'] = 'cyan'
+        G.get_node(maxNode)
         
 def main():
     global G
@@ -186,18 +218,19 @@ def main():
     G.add_edge(1,2)
     G.add_edge(2,3)
     G.add_edge(3,1)
+    maxNode = 3
     G.get_node(1).attr['color'] = 'red'
     G.get_node(2).attr['color'] = 'blue'
     G.get_node(3).attr['color'] = 'green'
     G.get_node(1).attr['hoverColor'] = 'darkRed'
     G.get_node(2).attr['hoverColor'] = 'darkBlue'
     G.get_node(3).attr['hoverColor'] = 'darkGreen'
-    G.get_node(1).attr['selectedColor'] = 'lightGray'
-    G.get_node(2).attr['selectedColor'] = 'lightGray'
-    G.get_node(3).attr['selectedColor'] = 'lightGray'
-    G.get_node(1).attr['heldColor'] = 'white'
-    G.get_node(2).attr['heldColor'] = 'white'
-    G.get_node(3).attr['heldColor'] = 'white'
+    G.get_node(1).attr['selectedColor'] = 'white'
+    G.get_node(2).attr['selectedColor'] = 'white'
+    G.get_node(3).attr['selectedColor'] = 'white'
+    G.get_node(1).attr['heldColor'] = 'black'
+    G.get_node(2).attr['heldColor'] = 'black'
+    G.get_node(3).attr['heldColor'] = 'black'
     G.get_node(1).attr['held'] = 'False'
     G.get_node(2).attr['held'] = 'False'
     G.get_node(3).attr['held'] = 'False'
