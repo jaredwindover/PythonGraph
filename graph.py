@@ -117,7 +117,6 @@ def StretchyPath(pos1,pos2,rad1,rad2,mFac,maxSep,minSep = 0):
     C2 = 1.0*sc
     c2 = 3.0*sc
     up2to1 = (pos2 - pos1)/distPos1toPos2
-    print str(up2to1.x()) + ', ' + str(up2to1.y())
     conP1 = QPointF(p1 + up2to1*C1)
     conP2a = QPointF(p2 -up2to1*c1)
     path.cubicTo(conP1,conP2a,p2)
@@ -224,7 +223,8 @@ class Window(QWidget):
             self.drawNode(qp,n)
 
     def drawEdge( self, qp, e):
-        qp.setPen(QColor(0,0,0,0))#'black'))
+        #qp.setPen(QColor(0,0,0,0))
+        qp.setPen(QColor('black'))
         pString = e[0].attr['pos']
         pos1 = QPointF(*gPS2intT(pString))
         pString = e[1].attr['pos']
@@ -258,7 +258,8 @@ class Window(QWidget):
         rg.setColorAt(0.6,qc)
         rg.setColorAt(1,QColor(0,0,0,0))
         qp.setBrush(rg)
-        qp.setPen(QColor(0,0,0,0))#qc)
+        qp.setPen(QColor(0,0,0,0))
+        #qp.setPen(qc)
         qp.drawEllipse(p,nodeRad,nodeRad)
         
             
