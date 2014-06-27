@@ -173,7 +173,13 @@ class Window(QWidget):
         pos1 = QPoint(*gPS2intT(pString))
         pString = e[1].attr['pos']
         pos2 = QPoint(*gPS2intT(pString))
-        qp.drawLine(pos1,pos2)
+        path = QPainterPath(pos1)
+        path.lineTo(pos2)
+        stroker = QPainterPathStroker()
+        stroker.setWidth(5)
+        path2 = stroker.createStroke(path)
+        
+        qp.drawPath(path2)
 
     def drawNode( self, qp, n):
         pString = n.attr['pos']
