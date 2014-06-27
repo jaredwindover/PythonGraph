@@ -24,7 +24,8 @@ def StretchyPath(qp,pos1,pos2,rad1,rad2,mFac,maxSep,minSep = 0):
     p4 = rad2*rightPoint + pos2
     p5 = min(mFac/distPos1toPos2 + minSep/2,maxSep/2)*rightPoint + mid
     p6 = rad1*rightPoint + pos1
-
+    
+    qp.setBrush(QColor(0,0,0,0))
     qp.drawEllipse(pos1,rad1,rad1)
     qp.drawEllipse(pos2,rad2,rad2)
     qp.setPen(QColor(255,0,0))
@@ -111,7 +112,9 @@ class Window(QWidget):
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
-        StretchyPath(qp,QPointF(100.0,100.0),QPointF(450.0,450.0),50,100,30,35,5)
+        qp.setRenderHint(QPainter.Antialiasing)
+        for i in range(36):
+            StretchyPath(qp,QPointF(300.0,300.0),QPointF(300.0,300.0) + QPointF(250*sin(i*pi/18),250*cos(i*pi/18)),25,25,10,50,30)
         qp.end()
     
 

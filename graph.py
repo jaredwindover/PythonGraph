@@ -19,6 +19,13 @@ heldNode = None
 maxNode = 0
 
 
+def mixColors(qcol1,qcol2,per1,per2):
+    r = (qcol1.redF()*per1 + qcol2.redF()*per2)/(per1 + per2)
+    b = (qcol1.blueF()*per1 + qcol2.blueF()*per2)/(per1 + per2)
+    g = (qcol1.greenF()*per1 + qcol2.greenF()*per2)/(per1 + per2)
+    a = (qcol1.alphaF()*per1 + qcol2.alphaF()*per2)/(per1 + per2)
+    return QColor.fromRgbF(r,g,b,a)
+    
 def norm(point):
     return sqrt(point.x()**2 + point.y()**2)
 
@@ -104,12 +111,13 @@ def StretchyPath(pos1,pos2,rad1,rad2,mFac,maxSep,minSep = 0):
     path.moveTo(p6)
     rect1 = QRectF(pos1.x()- rad1, pos1.y()- rad1,2*rad1,2*rad1)
     path.arcTo(rect1,degrees(-rightAngle),180)
-    sc = 15
+    sc = 0.05*distPos1toPos2
     C1 = 1.0*sc
-    c1 = 5.0*sc
-    C2 = 0.8*sc
-    c2 = 3*sc
+    c1 = 3.0*sc
+    C2 = 1.0*sc
+    c2 = 3.0*sc
     up2to1 = (pos2 - pos1)/distPos1toPos2
+    print str(up2to1.x()) + ', ' + str(up2to1.y())
     conP1 = QPointF(p1 + up2to1*C1)
     conP2a = QPointF(p2 -up2to1*c1)
     path.cubicTo(conP1,conP2a,p2)
@@ -218,14 +226,18 @@ class Window(QWidget):
     def drawEdge( self, qp, e):
         qp.setPen(QColor(0,0,0,0))#'black'))
         pString = e[0].attr['pos']
-        pos1 = QPoint(*gPS2intT(pString))
+        pos1 = QPointF(*gPS2intT(pString))
         pString = e[1].attr['pos']
-        pos2 = QPoint(*gPS2intT(pString))
-        path = StretchyPath(pos1,pos2,nodeRad,nodeRad,10,50,30)
+        pos2 = QPointF(*gPS2intT(pString))
+        path = StretchyPath(pos1,pos2,nodeRad,nodeRad,1000,50,10)
         lg = QLinearGradient(pos1,pos2)
-        lg.setColorAt(0,QColor(e[0].attr['color']))
-        lg.setColorAt(0.5,QColor(0,0,0,0))
-        lg.setColorAt(1,QColor(e[1].attr['color']))
+        qcol1 = QColor(e[0].attr['color'])
+        qcol2 = QColor(e[1].attr['color'])
+        qcolm = mixColors(qcol1,qcol2,1,1)
+        qcolm.setAlphaF(0.7)
+        lg.setColorAt(0,qcol1)
+        lg.setColorAt(0.5,qcolm)
+        lg.setColorAt(1,qcol2)
         qp.setBrush(lg)
         qp.drawPath(path)
 
