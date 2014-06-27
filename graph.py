@@ -168,7 +168,7 @@ class Window(QWidget):
             self.drawNode(qp,n)
 
     def drawEdge( self, qp, e):
-        qp.setPen(QColor('black'))
+        qp.setPen(QColor(0,0,0,0))#'black'))
         pString = e[0].attr['pos']
         pos1 = QPoint(*gPS2intT(pString))
         pString = e[1].attr['pos']
@@ -178,7 +178,11 @@ class Window(QWidget):
         stroker = QPainterPathStroker()
         stroker.setWidth(5)
         path2 = stroker.createStroke(path)
-        
+        lg = QLinearGradient(pos1,pos2)
+        lg.setColorAt(0,QColor(e[0].attr['color']))
+        lg.setColorAt(0.5,QColor(0,0,0,0))
+        lg.setColorAt(1,QColor(e[1].attr['color']))
+        qp.setBrush(lg)
         qp.drawPath(path2)
 
     def drawNode( self, qp, n):
@@ -195,6 +199,7 @@ class Window(QWidget):
         else:
             qc = QColor(n.attr['color'])
         rg.setColorAt(0,qc)
+        rg.setColorAt(0.6,qc)
         rg.setColorAt(1,QColor(0,0,0,0))
         qp.setBrush(rg)
         qp.setPen(QColor(0,0,0,0))#qc)
