@@ -1,3 +1,9 @@
+###
+##Cursor class:
+#_stores information about the current
+#_state of the mouse
+###
+
 class Cursor():
     def __init__(self):
         self.x = 0
