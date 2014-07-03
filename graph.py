@@ -4,7 +4,7 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from cursor import *
 from math import atan2, degrees, pi, sqrt, sin, cos
-
+from time import clock
 
 windowTitle = "Mouse Controlled Graph"
 geometry = (300,300,500,500)
@@ -18,6 +18,13 @@ hoverNode = None
 heldNode = None
 maxNode = 0
 
+fps = 30
+
+cKinetic = 80
+cStatic = 100
+baseForce = 0.0001
+thresholdVelocity = 0.1
+cursorVelocity = QPointF(0,0)
 
 def mixColors(qcol1,qcol2,per1,per2):
     r = (qcol1.redF()*per1 + qcol2.redF()*per2)/(per1 + per2)
@@ -29,6 +36,14 @@ def mixColors(qcol1,qcol2,per1,per2):
 def norm(point):
     return sqrt(point.x()**2 + point.y()**2)
 
+def dot(qp1,qp2):
+    return qp1.x()*qp2.x() + qp1.y()*qp2.y()
+
+def proj(qp1,qp2):
+    m2 = norm(qp2)
+    qp2hat = qp2/m2
+    return dot(qp1,qp2hat)*qp2hat
+    
 def pointAtAngle(angle):
     return QPointF(cos(angle),sin(angle))
 
@@ -40,6 +55,15 @@ def gPS2intT(x):
 
 def T2gPS(x):
     return reduce(lambda x,y: unicode(x) + ',' + unicode(y), x)
+
+def gPS2floatQp(x):
+    return QPointF(*gPS2floatT(x))
+
+def gPS2intQp(x):
+    return QPoint(*gPS2intT(x))
+
+def Qp2gPS(qp):
+    return unicode(qp.x()) + ',' + unicode(qp.y())
     
 def unselect():
     global selectedNode
@@ -73,13 +97,15 @@ def select(node):
     if not same:
         selectedNode = node
         selectedNode.attr['selected'] = 'True'
+        selectedNode.attr['velocity'] = u'0,0'
 
 def hold(node):
     global heldNode
     unhold()
     unhover()
-    node.attr['held'] = 'True'
     heldNode = node
+    heldNode.attr['held'] = 'True'
+    heldNode.attr['velocity'] = u'0,0'
 
 def hover(node):
     global hoverNode
@@ -102,10 +128,16 @@ def StretchyPath(pos1,pos2,rad1,rad2,mFac,maxSep,minSep = 0):
     leftPoint = pointAtAngle(leftAngle)
     rightPoint = pointAtAngle(rightAngle)
     p1 = rad1*leftPoint + pos1
-    p2 = min(mFac/distPos1toPos2+minSep/2,maxSep/2)*leftPoint+mid
+    if (distPos1toPos2 == 0):
+        p2 = (maxSep/2)*leftPoint + mid
+    else:
+        p2 = min(mFac/distPos1toPos2+minSep/2,maxSep/2)*leftPoint+mid
     p3 = rad2*leftPoint + pos2
     p4 = rad2*rightPoint + pos2
-    p5 =min(mFac/distPos1toPos2+minSep/2,maxSep/2)*rightPoint+mid
+    if (distPos1toPos2 == 0):
+        p5 =(maxSep/2)*rightPoint + mid
+    else:
+        p5 =min(mFac/distPos1toPos2+minSep/2,maxSep/2)*rightPoint+mid
     p6 = rad1*rightPoint + pos1
     path = QPainterPath()
     path.moveTo(p6)
@@ -133,6 +165,79 @@ def StretchyPath(pos1,pos2,rad1,rad2,mFac,maxSep,minSep = 0):
     path.cubicTo(conP5b,conP6,p6)
     return path
 
+def initNode(node,color,hoverColor,selectedColor='white',heldColor='black',held='False',selected='False',hover='False'):
+    node.attr['color'] = color
+    node.attr['hoverColor'] = hoverColor
+    node.attr['selectedColor'] = selectedColor
+    node.attr['heldColor'] = heldColor
+    node.attr['held'] = 'False'
+    node.attr['selected'] = 'False'
+    node.attr['hover'] = 'False'
+    node.attr['force'] = u'0,0'
+    node.attr['acceleration'] = u'0,0'
+    node.attr['velocity'] = u'0,0'
+    node.attr['position'] = u'0,0'
+    node.attr['mass'] = u'1'
+
+    
+def updateForce(node):
+    global G
+    global cKinetic
+    global cStatic
+    if (node.attr['held'] == 'False' and node.attr['selected'] == 'False'):
+        F = QPointF(0,0)
+        for other in G.neighbors(node):
+            pnode = gPS2floatQp(node.attr['pos'])
+            pother = gPS2floatQp(other.attr['pos'])
+            dist = norm(pnode - pother)
+            F = F + baseForce*(pother-pnode)*(dist**2)
+        node.attr['force'] = Qp2gPS(F)
+        
+def updateAcceleration(node):
+    global G
+    if (node.attr['held'] == 'False' and node.attr['selected'] == 'False'):
+        F = gPS2floatQp(node.attr['force'])
+        Fm = norm(F)
+        V = gPS2floatQp(node.attr['velocity'])
+        Vm = norm(V)
+        m = float(node.attr['mass'])
+        if Vm > 0:
+            Ff = -(cKinetic/Vm)*V
+            FdirFf = proj(F,Ff)
+            Fr = F - FdirFf
+            Fg = FdirFf + Ff
+            if norm(Fg) <= 0:
+                A = Fr/m
+            else:
+                A = (Fr + Fg)/m
+        else:
+            Ff = (-cStatic/Fm)*F
+            if Fm > cStatic:
+                A = (F+Ff)/m
+            else:
+                A = QPointF(0,0)
+        node.attr['acceleration']=Qp2gPS(A)
+
+def updateVelocity(node):
+    global G
+    if (node.attr['held'] == 'False' and node.attr['selected'] == 'False'):
+        V = gPS2floatQp(node.attr['velocity'])
+        V = V + gPS2floatQp(node.attr['acceleration'])/30
+        Vm = norm(V)
+        if Vm > thresholdVelocity:
+            node.attr['velocity'] = Qp2gPS(V)
+        else:
+            node.attr['velocity'] = u'0,0'
+
+def updatePosition(node):
+    global G
+    if (node.attr['held'] == 'False' and node.attr['selected'] == 'False'):
+        P = gPS2floatQp(node.attr['pos'])
+        V = gPS2floatQp(node.attr['velocity'])
+        P = P + V/30
+        node.attr['pos'] = Qp2gPS(P)
+
+        
 class Window(QWidget):
     
     def __init__(self):
@@ -262,7 +367,37 @@ class Window(QWidget):
         #qp.setPen(qc)
         qp.drawEllipse(p,nodeRad,nodeRad)
         
-            
+
+    def updateGraph(self):
+        global fps
+        t1 = clock()
+        self.updateForces()
+        self.updateAccelerations()
+        self.updateVelocities()
+        self.updatePositions()
+        self.repaint()
+        QTimer.singleShot(max(0,1000/fps - (clock() - t1)),self.updateGraph)
+        
+    def updateForces(self):
+        global G
+        for n in G.nodes():
+            updateForce(n)
+
+    def updateAccelerations(self):
+        global G
+        for n in G.nodes():
+            updateAcceleration(n)
+
+    def updateVelocities(self):
+        global G
+        for n in G.nodes():
+            updateVelocity(n)
+
+    def updatePositions(self):
+        global G
+        for n in G.nodes():
+            updatePosition(n)
+        
     def getClosestNode(self,pos):
         global G
         positions = [(n,n.attr['pos']) for n in G.nodes()]
@@ -287,30 +422,13 @@ def main():
     G.add_edge(2,3)
     G.add_edge(3,1)
     maxNode = 3
-    G.get_node(1).attr['color'] = 'red'
-    G.get_node(2).attr['color'] = 'blue'
-    G.get_node(3).attr['color'] = 'green'
-    G.get_node(1).attr['hoverColor'] = 'darkRed'
-    G.get_node(2).attr['hoverColor'] = 'darkBlue'
-    G.get_node(3).attr['hoverColor'] = 'darkGreen'
-    G.get_node(1).attr['selectedColor'] = 'white'
-    G.get_node(2).attr['selectedColor'] = 'white'
-    G.get_node(3).attr['selectedColor'] = 'white'
-    G.get_node(1).attr['heldColor'] = 'black'
-    G.get_node(2).attr['heldColor'] = 'black'
-    G.get_node(3).attr['heldColor'] = 'black'
-    G.get_node(1).attr['held'] = 'False'
-    G.get_node(2).attr['held'] = 'False'
-    G.get_node(3).attr['held'] = 'False'
-    G.get_node(1).attr['selected'] = 'False'
-    G.get_node(2).attr['selected'] = 'False'
-    G.get_node(3).attr['selected'] = 'False'
-    G.get_node(1).attr['hover'] = 'False'
-    G.get_node(2).attr['hover'] = 'False'
-    G.get_node(3).attr['hover'] = 'False'
+    initNode(G.get_node(1),'red','darkRed')
+    initNode(G.get_node(2),'blue','darkBlue')
+    initNode(G.get_node(3),'green','darkGreen')
     G.layout()
     app = QApplication(sys.argv)
     window = Window()
+    window.updateGraph()
     app.exec_()
 
 if __name__ == '__main__':
