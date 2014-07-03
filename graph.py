@@ -24,7 +24,7 @@ cKinetic = 80
 cStatic = 100
 baseForce = 0.0001
 thresholdVelocity = 0.1
-cursorVelocity = QPointF(0,0)
+maxVelocity = 1000
 
 def mixColors(qcol1,qcol2,per1,per2):
     r = (qcol1.redF()*per1 + qcol2.redF()*per2)/(per1 + per2)
@@ -75,8 +75,13 @@ def unselect():
 
 def unhold():
     global heldNode
+    global window
+    mouse2nodeVel = 10
     try:
         heldNode.attr['held'] = 'False'
+        vel = QPointF(window.cursor.x - window.cursor._px,window.cursor.y - window.cursor._py)
+        print vel.x(), ' ',vel.y()
+        heldNode.attr['velocity'] = Qp2gPS(mouse2nodeVel*vel)
     except:
         pass
     heldNode = None
@@ -210,12 +215,15 @@ def updateAcceleration(node):
                 A = Fr/m
             else:
                 A = (Fr + Fg)/m
-        else:
+        elif not Fm == 0:
+            
             Ff = (-cStatic/Fm)*F
             if Fm > cStatic:
                 A = (F+Ff)/m
             else:
                 A = QPointF(0,0)
+        else:
+            A = QPointF(0,0)
         node.attr['acceleration']=Qp2gPS(A)
 
 def updateVelocity(node):
@@ -225,10 +233,35 @@ def updateVelocity(node):
         V = V + gPS2floatQp(node.attr['acceleration'])/30
         Vm = norm(V)
         if Vm > thresholdVelocity:
-            node.attr['velocity'] = Qp2gPS(V)
+            if Vm > maxVelocity:
+                node.attr['velocity'] = Qp2gPS((maxVelocity/Vm)*V)
+            else:
+                node.attr['velocity'] = Qp2gPS(V)
         else:
             node.attr['velocity'] = u'0,0'
 
+def checkCollide(node):
+    global window
+    size = window.size()
+    width = size.width() - nodeRad
+    height = size.height() - nodeRad
+    pos = gPS2floatQp(node.attr['pos'])
+    vel = gPS2floatQp(node.attr['velocity'])
+    if (pos.x() < 0 + nodeRad):
+        vel.setX(-vel.x())
+        pos.setX(nodeRad)
+    elif (pos.x() > width):
+        vel.setX(-vel.x())
+        pos.setX(width)
+    if (pos.y() < 0 + nodeRad):
+        vel.setY(-vel.y())
+        pos.setY(nodeRad)
+    elif (pos.y() > height):
+        vel.setY(-vel.y())
+        pos.setY(height)
+    node.attr['velocity'] = Qp2gPS(vel)
+    node.attr['pos'] = Qp2gPS(pos)
+            
 def updatePosition(node):
     global G
     if (node.attr['held'] == 'False' and node.attr['selected'] == 'False'):
@@ -274,6 +307,8 @@ class Window(QWidget):
     def mouseMoveEvent(self, event):
         self.cursor.update(event)
         self.leftClickOnRelease = False
+        self.cursor.hasMoved = True
+        self.cursor.moving = True
         if self.cursor.leftDown:
             self.onLeftDrag()
         else:
@@ -371,12 +406,24 @@ class Window(QWidget):
     def updateGraph(self):
         global fps
         t1 = clock()
+        self.updateCursorVelocity()
         self.updateForces()
         self.updateAccelerations()
         self.updateVelocities()
+        self.checkCollisions()
         self.updatePositions()
         self.repaint()
         QTimer.singleShot(max(0,1000/fps - (clock() - t1)),self.updateGraph)
+
+    def checkCollisions(self):
+        for n in G.nodes():
+            checkCollide(n)
+        
+    def updateCursorVelocity(self):
+        if self.cursor.hasMoved:
+            self.cursor.hasMoved = False
+        else:
+            self.cursor.moving = False
         
     def updateForces(self):
         global G
@@ -421,6 +468,7 @@ def main():
     G.add_edge(1,2)
     G.add_edge(2,3)
     G.add_edge(3,1)
+    #G.add_node(1)
     maxNode = 3
     initNode(G.get_node(1),'red','darkRed')
     initNode(G.get_node(2),'blue','darkBlue')

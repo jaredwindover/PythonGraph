@@ -13,14 +13,18 @@ class Cursor():
         self.leftDown = False
         self.rightDown = False
         self.midDown = False
+        self.hasMoved = False
+        self.moving = False
         
     def setX(self,a):
-        self._px = self.x
-        self.x = a
+        if self.x != a:
+            self._px = self.x
+            self.x = a
 
     def setY(self,a):
-        self._py = self.y
-        self.y = a
+        if self.y != a:
+            self._py = self.y
+            self.y = a
 
     def setButtons(self,b):
         b = int(b)
