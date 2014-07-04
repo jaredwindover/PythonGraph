@@ -20,8 +20,8 @@ maxNode = 0
 
 fps = 30
 
-cKinetic = 80
-cStatic = 100
+cKinetic = 0.1#80
+cStatic = 0.1#100
 baseForce = 0.0001
 thresholdVelocity = 0.1
 maxVelocity = 1000
@@ -79,8 +79,7 @@ def unhold():
     mouse2nodeVel = 10
     try:
         heldNode.attr['held'] = 'False'
-        vel = QPointF(window.cursor.x - window.cursor._px,window.cursor.y - window.cursor._py)
-        print vel.x(), ' ',vel.y()
+        vel = QPointF(window.cursor.x - window.cursor._px,window.cursor.y - window.cursor._py)        
         heldNode.attr['velocity'] = Qp2gPS(mouse2nodeVel*vel)
     except:
         pass
@@ -407,11 +406,17 @@ class Window(QWidget):
         global fps
         t1 = clock()
         self.updateCursorVelocity()
+        #print "Cursor: ", clock() - t1
         self.updateForces()
+        #print "Forces: ", clock() - t1
         self.updateAccelerations()
+        #print "Acceleration: ", clock() - t1
         self.updateVelocities()
+        #print "Velocities: ", clock() - t1
         self.checkCollisions()
+        #print "Collisions: ", clock() - t1
         self.updatePositions()
+        #print "Positions: ", clock() - t1
         self.repaint()
         QTimer.singleShot(max(0,1000/fps - (clock() - t1)),self.updateGraph)
 
@@ -424,6 +429,8 @@ class Window(QWidget):
             self.cursor.hasMoved = False
         else:
             self.cursor.moving = False
+        if not self.cursor.leftDown:
+            self.onLeftHover()
         
     def updateForces(self):
         global G
@@ -468,11 +475,22 @@ def main():
     G.add_edge(1,2)
     G.add_edge(2,3)
     G.add_edge(3,1)
+    G.add_edge(2,4)
+    G.add_edge(4,5)
+    G.add_edge(5,2)
+    G.add_edge(1,6)
+    G.add_edge(6,5)
+    G.add_edge(3,7)
+    G.add_edge(7,4)
     #G.add_node(1)
     maxNode = 3
     initNode(G.get_node(1),'red','darkRed')
     initNode(G.get_node(2),'blue','darkBlue')
     initNode(G.get_node(3),'green','darkGreen')
+    initNode(G.get_node(4),'yellow','darkYellow')
+    initNode(G.get_node(5),'orange','darkOrange')
+    initNode(G.get_node(6),'purple','darkPurple')
+    initNode(G.get_node(7),'lightGreen','green')
     G.layout()
     app = QApplication(sys.argv)
     window = Window()
