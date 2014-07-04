@@ -18,6 +18,8 @@ hoverNode = None
 heldNode = None
 maxNode = 0
 
+m = 0
+
 fps = 30
 
 cKinetic = 0.1#80
@@ -102,6 +104,7 @@ def select(node):
         selectedNode = node
         selectedNode.attr['selected'] = 'True'
         selectedNode.attr['velocity'] = u'0,0'
+    m.updateColor()
 
 def hold(node):
     global heldNode
@@ -272,8 +275,8 @@ def updatePosition(node):
         
 class Window(QWidget):
     
-    def __init__(self):
-        super(Window, self).__init__()
+    def __init__(self,*args):
+        super(Window, self).__init__(*args)
         self.initUI()
         self.leftClickOnRelease = False
         self.cursor = Cursor()
@@ -281,21 +284,30 @@ class Window(QWidget):
     def initUI(self):
         global windowTitle
         global geometry
-        self.setGeometry(*geometry)
+        #self.setGeometry(*geometry)
         self.setMouseTracking(True)
-        self.setWindowTitle(windowTitle)
         pal = QPalette()
-        pal.setColor(QPalette.Window, QColor('pink'))
+        pal.setColor(self.backgroundRole(), QColor('pink'))
         self.setPalette(pal)
-        self.autoFillBackground = True
+        self.setAutoFillBackground(True)
         self.show()
+        #self.setWindowTitle(windowTitle)
+        #self.show()
 
+    def sizeHint(self):
+        global geometry
+        return QSize(geometry[2],geometry[3])
+
+    def minimumSizeHint(self):
+        global geometry
+        return QSize(geometry[2],geometry[3])
+        
     def mousePressEvent(self, event):
         self.cursor.update(event)
         self.leftClickOnRelease = True
         self.onLeftPress()
         self.repaint()
-        
+
     def mouseReleaseEvent(self, event):
         self.cursor.update(event)
         if self.leftClickOnRelease:
@@ -353,6 +365,7 @@ class Window(QWidget):
         qp.setRenderHint(QPainter.Antialiasing)
         self.drawGraph( qp )
         qp.end()
+        self.show()
 
     def drawGraph( self, qp ):
         global G
@@ -467,10 +480,47 @@ class Window(QWidget):
         G.add_node(maxNode)
         G.get_node(maxNode).attr['color'] = 'cyan'
         G.get_node(maxNode)
+
+class Main(QWidget):
+    def __init__(self, *args):
+        super(Main,self).__init__(*args)
+        self.initUI()
+
+    def initUI(self):
+        global window
+        window = Window(self)
+        self.colorEdit = QLineEdit(self)
+        self.vbox = QVBoxLayout()
+        self.vbox.addWidget(window)
+        self.hbox2 = QHBoxLayout()
+        self.lineLabel = QLabel("Color")
+        self.button = QPushButton("Change")
+        self.button.clicked.connect(self.changeColor)
+        self.hbox2.addWidget(self.lineLabel)
+        self.hbox2.addWidget(self.colorEdit)
+        self.hbox2.addWidget(self.button)
+        self.vbox.addLayout(self.hbox2)
+        self.setLayout(self.vbox)
+        self.show()
+
+    def updateColor(self):
+        global selectedNode
+        try:
+            self.colorEdit.setText(QString(selectedNode.attr['color']))
+        except:
+            pass
+
+    def changeColor(self):
+        global selectedNode
+        try:
+            selectedNode.attr['color'] = str(self.colorEdit.text())
+        except:
+            pass
         
 def main():
     global G
     global window
+    global m
     global app
     G.add_edge(1,2)
     G.add_edge(2,3)
@@ -493,7 +543,7 @@ def main():
     initNode(G.get_node(7),'lightGreen','green')
     G.layout()
     app = QApplication(sys.argv)
-    window = Window()
+    m = Main()
     window.updateGraph()
     app.exec_()
 
