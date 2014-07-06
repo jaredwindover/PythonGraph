@@ -489,17 +489,49 @@ class Main(QWidget):
     def initUI(self):
         global window
         window = Window(self)
-        self.colorEdit = QLineEdit(self)
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(window)
+        
+        self.hbox1 = QHBoxLayout()
+        self.colorEdit = QLineEdit(self)
+        self.lineLabel1 = QLabel("Base Color")
+        self.button1 = QPushButton("Change base color")
+        self.button1.clicked.connect(self.changeColor)
+        self.hbox1.addWidget(self.lineLabel1)
+        self.hbox1.addWidget(self.colorEdit)
+        self.hbox1.addWidget(self.button1)
+        self.vbox.addLayout(self.hbox1)
+        
         self.hbox2 = QHBoxLayout()
-        self.lineLabel = QLabel("Color")
-        self.button = QPushButton("Change")
-        self.button.clicked.connect(self.changeColor)
-        self.hbox2.addWidget(self.lineLabel)
-        self.hbox2.addWidget(self.colorEdit)
-        self.hbox2.addWidget(self.button)
+        self.hoverEdit = QLineEdit(self)
+        self.lineLabel2 = QLabel("Hover Color")
+        self.button2 = QPushButton("Change hover color")
+        self.button2.clicked.connect(self.changeHover)
+        self.hbox2.addWidget(self.lineLabel2)
+        self.hbox2.addWidget(self.hoverEdit)
+        self.hbox2.addWidget(self.button2)
         self.vbox.addLayout(self.hbox2)
+        
+        self.hbox3 = QHBoxLayout()
+        self.heldEdit = QLineEdit(self)
+        self.lineLabel3 = QLabel("Held Color")
+        self.button3 = QPushButton("Change held color")
+        self.button3.clicked.connect(self.changeHeld)
+        self.hbox3.addWidget(self.lineLabel3)
+        self.hbox3.addWidget(self.heldEdit)
+        self.hbox3.addWidget(self.button3)
+        self.vbox.addLayout(self.hbox3)
+        
+        self.hbox4 = QHBoxLayout()
+        self.selectedEdit = QLineEdit(self)
+        self.lineLabel4 = QLabel("Selected Color")
+        self.button4 = QPushButton("Change selected color")
+        self.button4.clicked.connect(self.changeSelected)
+        self.hbox4.addWidget(self.lineLabel4)
+        self.hbox4.addWidget(self.selectedEdit)
+        self.hbox4.addWidget(self.button4)
+        self.vbox.addLayout(self.hbox4)
+                             
         self.setLayout(self.vbox)
         self.show()
 
@@ -507,6 +539,9 @@ class Main(QWidget):
         global selectedNode
         try:
             self.colorEdit.setText(QString(selectedNode.attr['color']))
+            self.hoverEdit.setText(QString(selectedNode.attr['hoverColor']))
+            self.heldEdit.setText(QString(selectedNode.attr['heldColor']))
+            self.selectedEdit.setText(QString(selectedNode.attr['selectedColor']))
         except:
             pass
 
@@ -516,7 +551,28 @@ class Main(QWidget):
             selectedNode.attr['color'] = str(self.colorEdit.text())
         except:
             pass
+
+    def changeHover(self):
+        global selectedNode
+        try:
+            selectedNode.attr['hoverColor'] = str(self.hoverEdit.text())
+        except:
+            pass
+
+    def changeHeld(self):
+        global selectedNode
+        try:
+            selectedNode.attr['heldColor'] = str(self.heldEdit.text())
+        except:
+            pass
         
+    def changeSelected(self):
+        global selectedNode
+        try:
+            selectedNode.attr['selectedColor'] = str(self.selectedEdit.text())
+        except:
+            pass
+                
 def main():
     global G
     global window
