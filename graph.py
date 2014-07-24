@@ -341,7 +341,7 @@ class Window(QWidget):
             heldNode.attr['pos'] = T2gPS(pos)
         except:
             pass
-
+            
     def onLeftHover(self):
         pos = (self.cursor.x,self.cursor.y)
         (node,dist) = self.getClosestNode(pos)
@@ -365,7 +365,7 @@ class Window(QWidget):
         qp.setRenderHint(QPainter.Antialiasing)
         self.drawGraph( qp )
         qp.end()
-        self.show()
+        #self.show()
 
     def drawGraph( self, qp ):
         global G
